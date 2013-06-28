@@ -171,7 +171,7 @@
         for (j in obj) {
             if (typeof (obj[j]) == "function") {
                 //If it is observable array
-                if (ko.isObservable(obj[j]) && obj[j]() && obj[j]().length) {
+                if (ko.isObservable(obj[j]) && obj[j]() && obj[j]() instanceof Array) {
                     if (callback) callback(obj[j]());
                     self.serverSideValidator.traverseKoViewModel(obj[j](), callback);
                 } else if (ko.isObservable(obj[j])) {
