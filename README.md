@@ -8,3 +8,5 @@ knockout-server-side-validation is simple Javascript library for displaying serv
 knockout-server-side-validation has two dependencies: knockoutjs and jQuery.
 
 Read more at http://bojankaurin.github.io/knockout-server-side-validation
+
+FluentValidation (c) Bojan Kaurin http://bojankaurin.com
