@@ -36,21 +36,37 @@
 
 <p>knockout-server-side-validation is simple Javascript library for displaying server side errors in browser where elements are bounded to knockout view model. By default, each message from server is shown next to the element error belongs to. This behavior can be overridden. At this moment, this library enables you very simple integration with ASP.NET MVC server side validation, but if needed, it can be extended to use with some another framework.</p>
 
-<h3>
+<p>If you want to show server side validation errors on client, when using AJAX call, and model is bounded with knockout you should do following:</p>
+
+<ol>
+<li><p>change way of knockout binding is done</p></li>
+<li><p>change way of handling validation messages on server</p></li>
+<li><p>change way of handling validation messages on client</p></li>
+</ol><h3>
 <a name="client-side-example" class="anchor" href="#client-side-example"><span class="octicon octicon-link"></span></a>Client side example</h3>
 
-<pre><code>$ cd your_repo_root/repo_name
-$ git fetch origin
-$ git checkout gh-pages
+<p>First add reference to knockout-server-validation.
+Then, instead of</p>
+
+<pre><code>ko.applyBindings(viewModel, rootNode);
 </code></pre>
 
-<h3>
-<a name="server-side-example" class="anchor" href="#server-side-example"><span class="octicon octicon-link"></span></a>Server side example</h3>
+<p>use</p>
 
-<pre><code>$ cd your_repo_root/repo_name
-$ git fetch origin
-$ git checkout gh-pages
+<pre><code>ko.applyBindingsWithValidation(viewModel, rootNode);
 </code></pre>
+
+<p>Now, we need to change how server handle validation errors. So, first in ASP.NET MVC way we need to define attribute</p>
+
+<pre><code>//TODO: add attribute implementation
+</code></pre>
+
+<p>After this, we need to add line of code when data is returned from server:</p>
+
+<pre><code>ko.serverSideValidator.validateModel(viewModel, data);
+</code></pre>
+
+<p>viewModel is knockout model and data is data returned from server from AJAX call.</p>
 
 <h3>
 <a name="dependencies" class="anchor" href="#dependencies"><span class="octicon octicon-link"></span></a>Dependencies</h3>
