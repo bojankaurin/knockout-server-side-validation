@@ -42,6 +42,9 @@
         //When binded with checked
         /checked\s*?:\s*?.+?(?=\s|,|$)/
     ];
+
+    var regexUniqueid = /uniqueid\s*?:\s*?.+?(?=\s|,|$)/;
+    
     var dataBind = "data-bind";
 
     /*
@@ -56,6 +59,11 @@
             var attrValue = element.attr(dataBind);
             var tmp;
             var name = null;
+            
+            var uniqueidMatch = attrValue.match(regexUniqueid);
+            if (uniqueidMatch && $.trim(uniqueidMatch[0].split(":")[0]) == uniqueIdField) {
+                return;
+            }
             
             //Go trough regexes for finding binding viewmodel property name.
             //For example data-bind="value:Name" should find Name, or data-bind="checked:RememberMe, should find RememberMe
@@ -91,23 +99,30 @@
         });
     };
     
+    self.applyValidation = function (viewModel) {
+        updateView();
+        startTraverseKoModel(viewModel);
+    };
+    
     self.applyBindingsWithValidation = function (viewModel, rootNode) {
         updateView();
         startTraverseKoModel(viewModel);
         ko.applyBindings(viewModel, rootNode);
     };
 
-
+    self.serverSideValidator.updateKoModel = startTraverseKoModel;
+    
     /*
     Validate model and generate span bellow item with class ko-validate-error. 
     If self.serverSideValidator.showValidationMessageHandler(elem, message) is set, then this handler is used to put appropriate messages.
     This handler passes two parameters. Elem - jQuery element in DOM, and message - validation message.
     If handler is set, then user needs to take care to remove all previous validation messages.
     */
-    self.serverSideValidator.validateModel = function (viewModel, data) {
+    self.serverSideValidator.validateModel = function (viewModel, data, unhandledMessagesHandler) {
         var valid = data && !(data.KoValid == false);
         //
         $("*[" + dataValidateUniqueAttribute + "]").remove();
+        $("*[uniqueid]").removeClass("ko-input-validation-error");
         if (data && data.KoValid == false && data.ModelState instanceof Array) {
             //Traverse through view model js object, and foreach elementName(generated based on self.serverSideValidator.getElement)
             //that is equal to Key that is returned from server in object in format { KoValid, ModelState }, where ModelState is array of errors,
@@ -116,9 +131,20 @@
             self.serverSideValidator.traverseJSObject(ko.mapping.toJS(viewModel), function (elementName) {
                 $.each(data.ModelState, function (index, element) {
                     if (element.Key == elementName) {
-                        var id = eval("viewModel." + elementName.replace(/\[/g, "()[") + "." + uniqueIdField + "()");
+                        try {
+                            var id = eval("viewModel." + elementName.replace(/\[/g, "()[") + "." + uniqueIdField + "()");
+                        }
+                        catch(ex){
+                            if (unhandledMessagesHandler && typeof(unhandledMessagesHandler) == "function") {
+                                unhandledMessagesHandler(element.Key, element.Value);
+                            }
+                            return;
+                        }
                         var elem = $("*[" + uniqueIdField + "=" + id + "]");
-                        var message = '<span class="ko-validate-error" ' + dataValidateUniqueAttribute + '="' + id + '">' + element.Value + '</span>';
+                        var message = '<span class="ko-field-validation-error" ' + dataValidateUniqueAttribute + '="' + id + '">' + element.Value + '</span>';
+                        if (typeof(element.Value) == "string" && element.Value.length) {
+                            elem.addClass("ko-input-validation-error");
+                        }
                         if (self.serverSideValidator.showValidationMessageHandler && typeof (self.serverSideValidator.showValidationMessageHandler) == "function") {
                             self.serverSideValidator.showValidationMessageHandler(elem, message);
                         } else {
@@ -159,7 +185,7 @@
     so each property can be identified on gui (each GUI data-binded element will have uniqueid on that property, so it will be bounded)
     */
     self.serverSideValidator.setUniqueId = function (object) {
-        if (object) {
+        if (object && !ko.isObservable(object.uniqueid)) {
             object.uniqueid = ko.observable(self.serverSideValidator.guid());
         }
     };
@@ -223,18 +249,21 @@
     For MVC, if there is object Company with list of Emplyees, where each employee have name.
     Then, getElement should return Company.Emplyees[index].Name, where index is numeric index of employee in list.  
     */
-    self.serverSideValidator.getElement = function (parent, j) {
-        var sufix = "";
-        if (parent != undefined && parent != null) {
-            if (parent.endsWith("]")) sufix = ".";
-            if (!isNaN(j)) {
-                return parent + sufix + "[" + j + "]";
+    self.serverSideValidator.getElement = function (parent, j) { 
+        var sufix = ""; 
+        if (parent != undefined && parent != null) { 
+            if (parent.endsWith("]")) sufix = "."; 
+            if (!isNaN(j)) { 
+                return parent + sufix + "[" + j + "]"; 
             } else {
-                return parent + sufix + j;
-            }
-        }
-        return j;
+                //For case when parent object exists but it is not an array
+                if (parent != undefined) sufix = ".";
+                return parent + sufix + j; 
+            } 
+        } 
+        return j; 
     };
+
     function init() {
     }
     $(document).ready(init);
