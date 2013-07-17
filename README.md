@@ -9,4 +9,4 @@ knockout-server-side-validation has two dependencies: knockoutjs and jQuery.
 
 Read more at http://bojankaurin.github.io/knockout-server-side-validation
 
-FluentValidation (c) Bojan Kaurin http://bojankaurin.com
+Knockout server side validation (c) Bojan Kaurin http://bojankaurin.com
