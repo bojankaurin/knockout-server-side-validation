@@ -56,9 +56,67 @@ Then, instead of</p>
 <pre><code>ko.applyBindingsWithValidation(viewModel, rootNode);
 </code></pre>
 
+<p>For ASP.NET MVC part, we will first add simple extension method</p>
+
+<pre><code>public static class ModelStateExtensions
+  {
+    public static JsonResult ToKoJsonResult(this ModelStateDictionary modelState)
+    {
+      return new JsonResult() { Data = new { KoValid = modelState.IsValid, ModelState = modelState.ToKoJSON() } };
+    }
+
+    public static object ToKoJSON(this ModelStateDictionary modelState)
+    {
+      return modelState.Where(x =&gt; x.Value.Errors.Count &gt; 0).Select(ms =&gt; new
+      {
+        Key = ms.Key,
+        //Value = string.Join(",", ms.Value.Errors.Select(x =&gt; x.ErrorMessage)),
+        Value = ms.Value.Errors.First().ErrorMessage
+      }).ToArray();
+    }
+  }
+</code></pre>
+
 <p>Now, we need to change how server handle validation errors. So, first in ASP.NET MVC way we need to define attribute</p>
 
-<pre><code>//TODO: add attribute implementation
+<pre><code>public class KoJsonValidateAttribute : ActionFilterAttribute
+  {
+    protected bool IgnoreValidation;
+
+    public KoJsonValidateAttribute(bool ignoreValidation = false)
+    {
+      this.IgnoreValidation = ignoreValidation;
+    }
+
+    public override void OnActionExecuting(ActionExecutingContext filterContext)
+    {
+      if (IgnoreValidation || !filterContext.HttpContext.Request.IsAjaxRequest())
+      {
+        return;
+      }
+      var modelState = filterContext.Controller.ViewData.ModelState;
+      if (!modelState.IsValid)
+      {
+        filterContext.HttpContext.Response.Clear();
+        filterContext.HttpContext.Response.StatusDescription = "Validation error";
+        filterContext.Result = modelState.ToKoJsonResult();
+        filterContext.Result.ExecuteResult(filterContext.Controller.ControllerContext);
+        filterContext.HttpContext.ClearError();
+        filterContext.HttpContext.Response.End();
+      }
+    }
+  }
+</code></pre>
+
+<p>Now, on action method in your controller, where you are posting data, add attribute to enable validation of data:</p>
+
+<pre><code>[HttpPost, KoJsonValidate]
+    public ActionResult Save(MyViewModel model)
+    {
+      //Save data from model
+      //For example, you can redirect to another page when validation passed, or something else, it depends application requirements. This response needs to be handled on client after validateModel returns true.
+      return Json(new { redirect = Url.Action("RedirectAction") }));
+    }
 </code></pre>
 
 <p>After this, we need to add line of code when data is returned from server:</p>
