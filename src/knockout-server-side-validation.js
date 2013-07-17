@@ -1,3 +1,12 @@
+/*
+===============================================================================
+    Author:     Bojan Kaurin - @bojankaurin                              
+    License:    MIT (http://opensource.org/licenses/mit-license.php)           
+                                                                               
+    Description: Validation of errors on server with KnockoutJS                             
+===============================================================================
+*/
+
 //Guid helper
 (function (koValidate) {
     var self = koValidate;
