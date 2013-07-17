@@ -43,7 +43,7 @@
 <li><p>change way of handling validation messages on server</p></li>
 <li><p>change way of handling validation messages on client</p></li>
 </ol><h3>
-<a name="client-side-example" class="anchor" href="#client-side-example"><span class="octicon octicon-link"></span></a>Client side example</h3>
+<a name="client-side" class="anchor" href="#client-side"><span class="octicon octicon-link"></span></a>Client side</h3>
 
 <p>First add reference to knockout-server-validation.
 Then, instead of</p>
@@ -55,6 +55,9 @@ Then, instead of</p>
 
 <pre><code>ko.applyBindingsWithValidation(viewModel, rootNode);
 </code></pre>
+
+<h3>
+<a name="server-side" class="anchor" href="#server-side"><span class="octicon octicon-link"></span></a>Server side</h3>
 
 <p>For ASP.NET MVC part, we will first add simple extension method</p>
 
@@ -118,6 +121,9 @@ Then, instead of</p>
       return Json(new { redirect = Url.Action("RedirectAction") }));
     }
 </code></pre>
+
+<h3>
+<a name="client-side-1" class="anchor" href="#client-side-1"><span class="octicon octicon-link"></span></a>Client side</h3>
 
 <p>After this, we need to add line of code when data is returned from server:</p>
 
