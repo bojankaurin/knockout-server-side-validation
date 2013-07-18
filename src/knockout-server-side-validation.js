@@ -62,7 +62,7 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
     self.serverSideValidator.init = function(opt) {
         opt = opt || {};
         if (opt.bindings && !(opt.bindings instanceof Array)) {
-            throw "options.bindings must be Array";
+            throw "options.bindings must be an Array";
         }
         ko.utils.extend(options, opt);
     };
@@ -84,24 +84,26 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
     //Regex to find attr with value inside data-bind.
     //For example inside data-bind="value:Name, attr : { class = 'class' }", should return attr : { class = 'class' }
     var regexForAttr = /attr\s*?:\s*?\{.+?\}/;
-    var bindingRegexPrefix = "\\s*?:\\s*?.+?(?=\\s|,|$)";
+    var bindingRegexSufix = "\\s*?:\\s*?.+?(?=\\s|,|$)";
     var dataBind = "data-bind";
-    var regexUniqueid = new RegExp(self.serverSideValidator.getConfigOptions().uniqueAttributeName + bindingRegexPrefix);
+    var regexUniqueid = new RegExp(self.serverSideValidator.getConfigOptions().uniqueAttributeName + bindingRegexSufix);
     var regexesForPropertyBinded = [
     //When binded with value
-		new RegExp("value" + bindingRegexPrefix),
+		new RegExp("value" + bindingRegexSufix),
     //When binded with checked
-		new RegExp("checked" + bindingRegexPrefix)
+		new RegExp("checked" + bindingRegexSufix)
     //value\s*?:\s*?.+?(?=\s|,|$)/,
     //checked\s*?:\s*?.+?(?=\s|,|$)/
     ];
 
-    //Merge custom bindings with knockout default bindings value and checked
-    for (var i = 0; i < self.serverSideValidator.getConfigOptions().bindings.length; i++) {
-        var regex = new RegExp(bindingRegexPrefix + self.serverSideValidator.getConfigOptions().bindings[i]);
-        //If item is not already added to array (Prevent duplicates)
-        if ($.inArray(regex, regexesForPropertyBinded) == -1) {
-            regexesForPropertyBinded.push(regex);
+    function refreshRegexesForPropertyBinded() {
+        //Merge custom bindings with knockout default bindings value and checked
+        for (var i = 0; i < self.serverSideValidator.getConfigOptions().bindings.length; i++) {
+            var regex = new RegExp(self.serverSideValidator.getConfigOptions().bindings[i] + bindingRegexSufix);
+            //If item is not already added to array (Prevent duplicates)
+            if ($.inArray(regex, regexesForPropertyBinded) == -1) {
+                regexesForPropertyBinded.push(regex);
+            }
         }
     }
 
@@ -110,6 +112,7 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
     For example. If there is attribute data-bind="value: Name" it will be replaced with data-bind="value:Name, attr{ Name.uniqueid() }"
     */
     function updateView() {
+        refreshRegexesForPropertyBinded();
         //Go through each element with data-bind attribute
         $("*[" + dataBind + "]").each(function (index, elem) {
             var element = $(elem);
@@ -125,7 +128,7 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
 
             //Go trough regexes for finding binding viewmodel property name.
             //For example data-bind="value:Name" should find Name, or data-bind="checked:RememberMe, should find RememberMe
-            $(regexesForPropertyBinded).each(function (index, elem) {
+            $.each(regexesForPropertyBinded, function (index, elem) {
                 var valueMatch = attrValue.match(elem);
                 if (name == null) {
                     if (valueMatch) {
