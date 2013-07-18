@@ -8,29 +8,6 @@ Description: Validation of errors on server with KnockoutJS
 */
 if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it is loaded before loading this server side validation plug-in'; }
 
-//Guid helper
-(function (koValidate) {
-    var self = koValidate;
-    self.serverSideValidator = self.serverSideValidator || {};
-
-    var s4 = function () {
-        return Math.floor((1 + Math.random()) * 0x10000)
-                   .toString(16)
-                   .substring(1);
-    };
-
-    //Generate guid
-    self.serverSideValidator.guid = function () {
-        return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
-            s4() + '-' + s4() + s4() + s4();
-    };
-
-    function init() {
-    }
-    $(document).ready(init);
-    return self;
-} (ko || {}));
-
 //Options
 (function (koValidate) {
     var self = koValidate;
@@ -241,13 +218,20 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
     var self = koValidate;
     self.serverSideValidator = self.serverSideValidator || {};
 
+    //Seed
+    var seedId = new Date().getTime();
+    
+    var nextId = function() {
+        return seedId += 1;
+    };
+    
     /*
     Set unique id (guid) to observable property,
     so each property can be identified on gui (each GUI data-binded element will have uniqueid on that property, so it will be bounded)
     */
     self.serverSideValidator.setUniqueId = function (object) {
         if (object && !ko.isObservable(object[self.serverSideValidator.getConfigOptions().uniqueAttributeName])) {
-            object[self.serverSideValidator.getConfigOptions().uniqueAttributeName] = ko.observable(self.serverSideValidator.guid());
+            object[self.serverSideValidator.getConfigOptions().uniqueAttributeName] = ko.observable(nextId());
         }
     };
 
