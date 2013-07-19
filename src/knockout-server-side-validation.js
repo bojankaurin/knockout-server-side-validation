@@ -17,6 +17,8 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
         bindings: [],
         //Name of unique attribute name to add to each observable
         uniqueAttributeName: "uniqueid",
+        //Server validation binding
+        serverValidationBinding: "serverValidation",
         //This attribute will be added to element on GUI with guid associated with it
         dataValidateUniqueAttribute: "data-validate-uniqueid",
         //Class to be added to input on validation error
@@ -36,21 +38,30 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
         options = jQuery.extend(options, defaults);
     };
 
-    self.serverSideValidator.init = function(opt) {
+    self.serverSideValidator.init = function (opt) {
         opt = opt || {};
         if (opt.bindings && !(opt.bindings instanceof Array)) {
             throw "options.bindings must be an Array";
         }
         ko.utils.extend(options, opt);
     };
-    
+
+    self.bindingHandlers[self.serverSideValidator.getConfigOptions().serverValidationBinding] = {
+        init: function (element, valueAccessor) {
+            valueAccessor().serverMessage = ko.observable();
+        },
+        update: function (element, valueAccessor, allBindingsAccessor) {
+            self.utils.setTextContent(element, valueAccessor().serverMessage());
+        }
+    };
+
     function init() {
-        
+
     }
-    
+
     $(document).ready(init);
     return self;
-} (ko || {}));
+}(ko || {}));
 
 //Validate
 (function (koValidate) {
@@ -69,8 +80,6 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
 		new RegExp("value" + bindingRegexSufix),
     //When binded with checked
 		new RegExp("checked" + bindingRegexSufix)
-    //value\s*?:\s*?.+?(?=\s|,|$)/,
-    //checked\s*?:\s*?.+?(?=\s|,|$)/
     ];
 
     function refreshRegexesForPropertyBinded() {
@@ -84,6 +93,47 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
         }
     }
 
+    function uniqueIdAlreadyExists(attrValue) {
+        var uniqueidMatch = attrValue.match(regexUniqueid);
+        if (uniqueidMatch && $.trim(uniqueidMatch[0].split(":")[0]) == self.serverSideValidator.getConfigOptions().uniqueAttributeName) {
+            return true;
+        }
+        return false;
+    }
+
+    function getBindedViewModelPropertyName(attrValue) {
+        var name;
+        //Go trough regexes for finding binding viewmodel property name.
+        //For example data-bind="value:Name" should find Name, or data-bind="checked:RememberMe, should find RememberMe
+        $.each(regexesForPropertyBinded, function (index, elem) {
+            var valueMatch = attrValue.match(elem);
+            if (name == null) {
+                if (valueMatch) {
+                    name = $.trim(valueMatch[0].split(":")[1]);
+                }
+            }
+        });
+        return name;
+    }
+
+    //Create new attribute value based on old attribute by adding unuque id attribute
+    function getNewAttrValue(oldAttrValue, bindedViewModelPropertyName) {
+        //set attr unique id
+        var match = oldAttrValue.match(regexForAttr);
+        //Renders ": Name.uniqueid() }"
+        var appendValue = self.serverSideValidator.getConfigOptions().uniqueAttributeName + " : " + bindedViewModelPropertyName + "." + self.serverSideValidator.getConfigOptions().uniqueAttributeName + "() }";
+        var newAttrValue;
+        //If we founded knockout attr value, then append to end
+        if (match) {
+            newAttrValue = oldAttrValue.replace(match[0], match[0].replace("}", " ," + appendValue));
+        }
+            //Else if there is no knockout attr value, add 
+        else {
+            newAttrValue = oldAttrValue + ", attr : { " + appendValue;
+        }
+        return newAttrValue;
+    }
+
     /*
     Update each element with data-bind attribute to add uniqueid.
     For example. If there is attribute data-bind="value: Name" it will be replaced with data-bind="value:Name, attr{ Name.uniqueid() }"
@@ -95,44 +145,20 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
             var element = $(elem);
             //data-bind value
             var attrValue = element.attr(dataBind);
-            var tmp;
-            var name = null;
 
-            var uniqueidMatch = attrValue.match(regexUniqueid);
-            if (uniqueidMatch && $.trim(uniqueidMatch[0].split(":")[0]) == self.serverSideValidator.getConfigOptions().uniqueAttributeName) {
-                return;
-            }
+            //If attr does not exists break
+            if (!attrValue) return;
+            //If unique id attribute already exists break
+            if (uniqueIdAlreadyExists(attrValue)) return;
 
-            //Go trough regexes for finding binding viewmodel property name.
-            //For example data-bind="value:Name" should find Name, or data-bind="checked:RememberMe, should find RememberMe
-            $.each(regexesForPropertyBinded, function (index, elem) {
-                var valueMatch = attrValue.match(elem);
-                if (name == null) {
-                    if (valueMatch) {
-                        name = $.trim(valueMatch[0].split(":")[1]);
-                    }
-                }
-            });
+            var name = getBindedViewModelPropertyName(attrValue);
 
             //If we determined name of viewmodel property
             if (name) {
-                //set attr unique id
-                if (attrValue) {
-                    var match = attrValue.match(regexForAttr);
-                    //Renders ": Name.uniqueid() }"
-                    var appendValue = self.serverSideValidator.getConfigOptions().uniqueAttributeName + " : " + name + "." + self.serverSideValidator.getConfigOptions().uniqueAttributeName + "() }";
-                    //If we founded knockout attr value, then append to end
-                    if (match) {
-                        tmp = attrValue.replace(match[0], match[0].replace("}", " ," + appendValue));
-                    }
-                    //Else if there is no knockout attr value, add 
-                    else {
-                        tmp = attrValue + ", attr : { " + appendValue;
-                    }
-                    //Update attr, by removing old one and adding new
-                    element.removeAttr(dataBind);
-                    element.attr(dataBind, tmp);
-                }
+                var newAttrValue = getNewAttrValue(attrValue, name);
+                //Update attr, by removing old one and adding new
+                element.removeAttr(dataBind);
+                element.attr(dataBind, newAttrValue);
             }
         });
     };
@@ -158,31 +184,39 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
     */
     self.serverSideValidator.validateModel = function (viewModel, data, unhandledMessagesHandler) {
         var valid = data && !(data.KoValid == false);
-        //
+        //Remove all automatically added messages and classes from elements
         $("*[" + self.serverSideValidator.getConfigOptions().dataValidateUniqueAttribute + "]").remove();
         $("*[" + self.serverSideValidator.getConfigOptions().uniqueAttributeName + "]").removeClass(self.serverSideValidator.getConfigOptions().inputValidationErrorClass);
-        if (data && data.KoValid == false && data.ModelState instanceof Array) {
-            //Traverse through view model js object, and foreach elementName(generated based on self.serverSideValidator.getElement)
-            //that is equal to Key that is returned from server in object in format { KoValid, ModelState }, where ModelState is array of errors,
-            //where each Key from this array item is string that needs to be equal to return from self.serverSideValidator.getElement. If this is equal, then validation message is set,
-            //or handler is called, if any. If handler is set, then logic that displays validation messages is ignored.
-            self.serverSideValidator.traverseJSObject(ko.mapping.toJS(viewModel), function (elementName) {
+        //Traverse through view model js object, and foreach elementName(generated based on self.serverSideValidator.getElement)
+        //that is equal to Key that is returned from server in object in format { KoValid, ModelState }, where ModelState is array of errors,
+        //where each Key from this array item is string that needs to be equal to return from self.serverSideValidator.getElement. If this is equal, then validation message is set,
+        //or handler is called, if any. If handler is set, then logic that displays validation messages is ignored.
+        self.serverSideValidator.traverseJSObject(ko.mapping.toJS(viewModel), function (elementName) {
+            var viewModelElement = eval("viewModel" + "." + elementName.replace(/\[/g, "()["));
+            //If this element have serverMessage binding, clear message
+            if (viewModelElement && viewModelElement.serverMessage) {
+                viewModelElement.serverMessage(null);
+            }
+            //If data is not valid
+            if (data && data.KoValid == false && data.ModelState instanceof Array) {
                 $.each(data.ModelState, function (index, element) {
                     if (element.Key == elementName) {
-                        try {
-                            var id = eval("viewModel." + elementName.replace(/\[/g, "()[") + "." + self.serverSideValidator.getConfigOptions().uniqueAttributeName + "()");
+                        //It there is server message binding, set message and break
+                        if (viewModelElement && viewModelElement.serverMessage) {
+                            viewModelElement.serverMessage(element.Value);
+                            return;
                         }
-                        catch (ex) {
+                        var uniqueId = viewModelElement !== undefined ? viewModelElement[self.serverSideValidator.getConfigOptions().uniqueAttributeName] : undefined;
+                        //If there is no unique id, then call unhandled message handler if any
+                        if (uniqueId === undefined) {
                             if (unhandledMessagesHandler && typeof (unhandledMessagesHandler) == "function") {
                                 unhandledMessagesHandler(element.Key, element.Value);
                             }
                             return;
                         }
-                        var elem = $("*[" + self.serverSideValidator.getConfigOptions().uniqueAttributeName + "=" + id + "]");
-                        var message = '<span class="' + self.serverSideValidator.getConfigOptions().fieldValidationErrorClass + '" ' + self.serverSideValidator.getConfigOptions().dataValidateUniqueAttribute + '="' + id + '">' + element.Value + '</span>';
-                        if (typeof (element.Value) == "string" && element.Value.length) {
-                            elem.addClass(self.serverSideValidator.getConfigOptions().inputValidationErrorClass);
-                        }
+                        var elem = getElement(uniqueId());
+                        var message = generateMessageElement(uniqueId(), element.Value);
+                        //If there is custom message handler for this key, then call it, otherwise insert automatic validation message.
                         if (self.serverSideValidator.showValidationMessageHandler && typeof (self.serverSideValidator.showValidationMessageHandler) == "function") {
                             self.serverSideValidator.showValidationMessageHandler(elem, message);
                         } else {
@@ -190,10 +224,27 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
                         }
                     }
                 });
-            });
-        }
+            }
+        });
         return valid;
     };
+
+    function getElement(uniqueId) {
+        return $("*[" + self.serverSideValidator.getConfigOptions().uniqueAttributeName + "=" + uniqueId + "]");
+    }
+
+    function generateMessageElement(uniqueId, message) {
+        var messageElement = '<span class="'
+                + self.serverSideValidator.getConfigOptions().fieldValidationErrorClass
+                + '" '
+                + self.serverSideValidator.getConfigOptions().dataValidateUniqueAttribute + '="' + uniqueId()
+                + '">' + element.Value
+                + '</span>';
+        if (typeof (message) == "string" && message.length) {
+            messageElement.addClass(self.serverSideValidator.getConfigOptions().inputValidationErrorClass);
+        }
+        return messageElement;
+    }
 
     /*
     Start traverse ko viewmodel to generate uniqueid on all observables
@@ -210,7 +261,7 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
     }
     $(document).ready(init);
     return self;
-} (ko || {}));
+}(ko || {}));
 
 
 //Traverse stuff
@@ -220,11 +271,11 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
 
     //Seed
     var seedId = new Date().getTime();
-    
-    var nextId = function() {
+
+    var nextId = function () {
         return seedId += 1;
     };
-    
+
     /*
     Set unique id (guid) to observable property,
     so each property can be identified on gui (each GUI data-binded element will have uniqueid on that property, so it will be bounded)
@@ -281,7 +332,7 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
     }
     $(document).ready(init);
     return self;
-} (ko || {}));
+}(ko || {}));
 
 
 //MVC way of generating field names
@@ -313,5 +364,4 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
     }
     $(document).ready(init);
     return self;
-} (ko || {}));
-
+}(ko || {}));
