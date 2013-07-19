@@ -201,26 +201,31 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
             if (data && data.KoValid == false && data.ModelState instanceof Array) {
                 $.each(data.ModelState, function (index, element) {
                     if (element.Key == elementName) {
+                        var message = element.Value;
                         //It there is server message binding, set message and break
                         if (viewModelElement && viewModelElement.serverMessage) {
-                            viewModelElement.serverMessage(element.Value);
+                            viewModelElement.serverMessage(message);
                             return;
                         }
                         var uniqueId = viewModelElement !== undefined ? viewModelElement[self.serverSideValidator.getConfigOptions().uniqueAttributeName] : undefined;
                         //If there is no unique id, then call unhandled message handler if any
                         if (uniqueId === undefined) {
                             if (unhandledMessagesHandler && typeof (unhandledMessagesHandler) == "function") {
-                                unhandledMessagesHandler(element.Key, element.Value);
+                                unhandledMessagesHandler(element.Key, message);
                             }
                             return;
                         }
+                        //Get element with validation error
                         var elem = getElement(uniqueId());
-                        var message = generateMessageElement(uniqueId(), element.Value);
                         //If there is custom message handler for this key, then call it, otherwise insert automatic validation message.
                         if (self.serverSideValidator.showValidationMessageHandler && typeof (self.serverSideValidator.showValidationMessageHandler) == "function") {
                             self.serverSideValidator.showValidationMessageHandler(elem, message);
                         } else {
-                            $(message).insertAfter(elem);
+                            var messageElement = generateMessageElement(uniqueId(), message);
+                            if (typeof (message) == "string" && message.length >= 0) {
+                                elem.addClass(self.serverSideValidator.getConfigOptions().inputValidationErrorClass);
+                                $(messageElement).insertAfter(elem);
+                            }
                         }
                     }
                 });
@@ -237,12 +242,9 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
         var messageElement = '<span class="'
                 + self.serverSideValidator.getConfigOptions().fieldValidationErrorClass
                 + '" '
-                + self.serverSideValidator.getConfigOptions().dataValidateUniqueAttribute + '="' + uniqueId()
-                + '">' + element.Value
+                + self.serverSideValidator.getConfigOptions().dataValidateUniqueAttribute + '="' + uniqueId
+                + '">' + message
                 + '</span>';
-        if (typeof (message) == "string" && message.length) {
-            messageElement.addClass(self.serverSideValidator.getConfigOptions().inputValidationErrorClass);
-        }
         return messageElement;
     }
 
