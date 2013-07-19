@@ -41,7 +41,7 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
     self.serverSideValidator.init = function (opt) {
         opt = opt || {};
         if (opt.bindings && !(opt.bindings instanceof Array)) {
-            throw "options.bindings must be an Array";
+            throw "knockout serverside validtion bindings options must be an Array";
         }
         ko.utils.extend(options, opt);
     };
