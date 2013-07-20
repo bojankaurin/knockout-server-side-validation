@@ -19,6 +19,8 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
         uniqueAttributeName: "uniqueid",
         //Server validation binding
         serverValidationBinding: "serverValidation",
+		//If true, messages will be insert automatically, otherwise, messages will be set in serverValidation bindings
+        automaticallyInsertValidationMessages: true,
         //This attribute will be added to element on GUI with guid associated with it
         dataValidateUniqueAttribute: "data-validate-uniqueid",
         //Class to be added to input on validation error
@@ -40,7 +42,7 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
 
     self.serverSideValidator.init = function (opt) {
         opt = opt || {};
-        if (opt && !(opt.bindings instanceof Array)) {
+        if (opt.bindings !== undefined && !(opt.bindings instanceof Array)) {
             throw "knockout serverside validation bindings options must be an Array";
         }
         ko.utils.extend(options, opt);
@@ -220,7 +222,7 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
                         //If there is custom message handler for this key, then call it, otherwise insert automatic validation message.
                         if (self.serverSideValidator.showValidationMessageHandler && typeof (self.serverSideValidator.showValidationMessageHandler) == "function") {
                             self.serverSideValidator.showValidationMessageHandler(elem, message);
-                        } else {
+                        } else if (self.serverSideValidator.getConfigOptions().automaticallyInsertValidationMessages == true) {
                             var messageElement = generateMessageElement(uniqueId(), message);
                             if (typeof (message) == "string" && message.length >= 0) {
                                 elem.addClass(self.serverSideValidator.getConfigOptions().inputValidationErrorClass);
