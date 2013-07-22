@@ -54,7 +54,7 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
             valueAccessor().serverMessage = ko.observable();
         },
         update: function (element, valueAccessor, allBindingsAccessor) {
-            self.utils.setTextContent(element, valueAccessor().serverMessage());
+            $(element).html(valueAccessor().serverMessage()).addClass(self.serverSideValidator.getConfigOptions().fieldValidationErrorClass);
         }
     };
 
@@ -87,13 +87,13 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
         return string.substring(string.length - startsWith.length, string.length) === startsWith;
     };
 
-    self.serverSideValidator.utils.addBindings = function (bindings) {
+    self.serverSideValidator.utils.addBindings = function(bindings) {
         bindings = bindings || [];
         //Merge custom bindings with knockout default bindings value and checked
         for (var i = 0; i < bindings.length; i++) {
             var regex = new RegExp(bindings[i] + bindingRegexSufix);
             //If item is not already added to array (Prevent duplicates)
-            var alreadyInArrayItem = ko.utils.arrayFirst(regexesForPropertyBinded, function (item) {
+            var alreadyInArrayItem = ko.utils.arrayFirst(regexesForPropertyBinded, function(item) {
                 //Convert regex to string and then compare
                 return String(regex) === String(item);
             });
@@ -101,7 +101,7 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
                 regexesForPropertyBinded.push(regex);
             }
         }
-    }
+    };
 
     self.serverSideValidator.utils.getRegexesForPropertyBinded = function () {
         return regexesForPropertyBinded;
@@ -144,29 +144,29 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
         }
     };
 
-    self.serverSideValidator.utils.uniqueIdAlreadyExists = function (attrValue) {
+    self.serverSideValidator.utils.uniqueIdAlreadyExists = function(attrValue) {
         var attrAttrValue = attrValue.match(regexForAttr);
         if (attrAttrValue) {
             var uniqueidMatch = attrAttrValue[0].match(regexUniqueid);
             if (uniqueidMatch) {
                 var uniqueIdValue = self.serverSideValidator.utils.getBindedViewModelPropertyName(attrAttrValue[0]) + "." + self.serverSideValidator.getConfigOptions().uniqueAttributeName;
-                if(//Unique attribute name is same as in options
+                if (//Unique attribute name is same as in options
                     $.trim(uniqueidMatch[0].split(":")[0]) == self.serverSideValidator.getConfigOptions().uniqueAttributeName
-                    //Unique attribute is readed from property binded to this attribute or property()
-                    && ($.trim(uniqueidMatch[0].split(":")[1]) == uniqueIdValue || $.trim(uniqueidMatch[0].split(":")[1]) == (uniqueIdValue + "()"))) {
+                        //Unique attribute is readed from property binded to this attribute or property()
+                        && ($.trim(uniqueidMatch[0].split(":")[1]) == uniqueIdValue || $.trim(uniqueidMatch[0].split(":")[1]) == (uniqueIdValue + "()"))) {
                     return true;
                 }
             }
         }
         return false;
-    }
+    };
 
-    self.serverSideValidator.utils.getBindedViewModelPropertyName = function (attrValue) {
+    self.serverSideValidator.utils.getBindedViewModelPropertyName = function(attrValue) {
         var name = null;
         //Go trough regexes for finding binding viewmodel property name.
         //For example data-bind="value:Name" should find Name, or data-bind="checked:RememberMe, should find RememberMe
         var regexes = self.serverSideValidator.utils.getRegexesForPropertyBinded();
-        $.each(regexes, function (index, elem) {
+        $.each(regexes, function(index, elem) {
             var valueMatch = attrValue.match(elem);
             if (name == null) {
                 if (valueMatch) {
@@ -175,10 +175,10 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
             }
         });
         return name;
-    }
+    };
 
     //Create new attribute value based on old attribute by adding unuque id attribute
-    self.serverSideValidator.utils.getNewAttrValue = function (oldAttrValue, bindedViewModelPropertyName) {
+    self.serverSideValidator.utils.getNewAttrValue = function(oldAttrValue, bindedViewModelPropertyName) {
         //If unique id attribute already exists break
         if (self.serverSideValidator.utils.uniqueIdAlreadyExists(oldAttrValue)) return oldAttrValue;
 
@@ -196,7 +196,7 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
             newAttrValue = oldAttrValue + ", attr : { " + appendValue;
         }
         return newAttrValue;
-    }
+    };
 
     /*
     Update each element with data-bind attribute to add uniqueid.
@@ -227,19 +227,19 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
         });
     };
 
-    self.serverSideValidator.utils.getDOMElement = function (uniqueId) {
+    self.serverSideValidator.utils.getDOMElement = function(uniqueId) {
         return $("*[" + self.serverSideValidator.getConfigOptions().uniqueAttributeName + "=" + uniqueId + "]");
-    }
+    };
 
-    self.serverSideValidator.utils.generateMessageElement = function (uniqueId, message) {
+    self.serverSideValidator.utils.generateMessageElement = function(uniqueId, message) {
         var messageElement = '<span class="'
-                + self.serverSideValidator.getConfigOptions().fieldValidationErrorClass
-                + '" '
-                + self.serverSideValidator.getConfigOptions().dataValidateUniqueAttribute + '="' + uniqueId
-                + '">' + message
-                + '</span>';
+            + self.serverSideValidator.getConfigOptions().fieldValidationErrorClass
+            + '" '
+            + self.serverSideValidator.getConfigOptions().dataValidateUniqueAttribute + '="' + uniqueId
+            + '">' + message
+            + '</span>';
         return messageElement;
-    }
+    };
 
     /*
     Recursive function to traverse ko object, and when property is observable, call callback with observable object
@@ -324,6 +324,7 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
         //Remove all automatically added messages and classes from elements
         $("*[" + self.serverSideValidator.getConfigOptions().dataValidateUniqueAttribute + "]").remove();
         $("*[" + self.serverSideValidator.getConfigOptions().uniqueAttributeName + "]").removeClass(self.serverSideValidator.getConfigOptions().inputValidationErrorClass);
+        $("*[data-bind^=" + self.serverSideValidator.getConfigOptions().serverValidationBinding + "]").removeClass(self.serverSideValidator.getConfigOptions().fieldValidationErrorClass);
         //Traverse through view model js object, and foreach elementName(generated based on self.serverSideValidator.utils.getElementPath)
         //that is equal to Key that is returned from server in object in format { KoValid, ModelState }, where ModelState is array of errors,
         //where each Key from this array item is string that needs to be equal to return from self.serverSideValidator.utils.getElementPath. If this is equal, then validation message is set,
