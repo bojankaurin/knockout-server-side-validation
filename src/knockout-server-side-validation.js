@@ -54,7 +54,9 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
             valueAccessor().serverMessage = ko.observable();
         },
         update: function (element, valueAccessor, allBindingsAccessor) {
-            $(element).html(valueAccessor().serverMessage()).addClass(self.serverSideValidator.getConfigOptions().fieldValidationErrorClass);
+            if (valueAccessor().serverMessage()) {
+                $(element).html(valueAccessor().serverMessage()).addClass(self.serverSideValidator.getConfigOptions().fieldValidationErrorClass);
+            }
         }
     };
 
