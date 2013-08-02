@@ -10,6 +10,7 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
 
 //Options
 (function (koValidate) {
+	"use strict";
     var self = koValidate;
     self.serverSideValidator = self.serverSideValidator || {};
 
@@ -65,6 +66,7 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
 
 //Utils
 (function (koValidate) {
+	"use strict";
     var self = koValidate;
     self.serverSideValidator = self.serverSideValidator || {};
     self.serverSideValidator.utils = self.serverSideValidator.utils || {};
@@ -247,7 +249,7 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
     Recursive function to traverse ko object, and when property is observable, call callback with observable object
     */
     self.serverSideValidator.utils.traverseKoViewModel = function (obj, callback) {
-        for (j in obj) {
+        for (var j in obj) {
             if (typeof (obj[j]) == "function") {
                 //If it is observable array
                 if (ko.isObservable(obj[j]) && obj[j]() && obj[j]() instanceof Array) {
@@ -266,7 +268,7 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
     /*Recursive function to traverse object, and foreach node, call callback with element,
     where current element is path to element. See serverSideValidator.utils.getElementPath. */
     self.serverSideValidator.utils.traverseJSObject = function (obj, callback, parent) {
-        for (j in obj) {
+        for (var j in obj) {
             var currentElement = self.serverSideValidator.utils.getElementPath(parent, j);
             if (typeof (obj[j]) == "object") {
                 // so this is an object
@@ -290,6 +292,7 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
 
 //Validate
 (function (koValidate) {
+	"use strict";
     var self = koValidate;
     self.serverSideValidator = self.serverSideValidator || {};
     self.serverSideValidator.showValidationMessageHandler = null;
