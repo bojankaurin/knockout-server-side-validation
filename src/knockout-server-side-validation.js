@@ -329,7 +329,7 @@ if (typeof (ko) === undefined) { throw 'Knockout is required, please ensure it i
         //Remove all automatically added messages and classes from elements
         $("*[" + self.serverSideValidator.getConfigOptions().dataValidateUniqueAttribute + "]").remove();
         $("*[" + self.serverSideValidator.getConfigOptions().uniqueAttributeName + "]").removeClass(self.serverSideValidator.getConfigOptions().inputValidationErrorClass);
-        $("*[data-bind^=" + self.serverSideValidator.getConfigOptions().serverValidationBinding + "]").removeClass(self.serverSideValidator.getConfigOptions().fieldValidationErrorClass);
+        $("*[data-bind^=" + self.serverSideValidator.getConfigOptions().serverValidationBinding + "]").html("").removeClass(self.serverSideValidator.getConfigOptions().fieldValidationErrorClass);
         //Traverse through view model js object, and foreach elementName(generated based on self.serverSideValidator.utils.getElementPath)
         //that is equal to Key that is returned from server in object in format { KoValid, ModelState }, where ModelState is array of errors,
         //where each Key from this array item is string that needs to be equal to return from self.serverSideValidator.utils.getElementPath. If this is equal, then validation message is set,
